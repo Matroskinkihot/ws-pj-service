@@ -1,11 +1,15 @@
 import express from 'express';
-import http from 'http';
+import https from 'https';
 import path from 'path';
+import fs from 'fs';
 import WebSocket, { WebSocketServer as WSWebSocketServer } from 'ws';
 
+const privateKey  = fs.readFileSync('sslcert/server.key', 'utf8');
+const certificate = fs.readFileSync('sslcert/server.crt', 'utf8');
+const credentials = {key: privateKey, cert: certificate};
 const app = express();
 const port = 3000;
-const server = http.createServer(app);
+const server = https.createServer(credentials, app);
 const wss = new WSWebSocketServer({ server });
 
 wss.on('connection', (ws) => {
@@ -20,16 +24,11 @@ wss.on('connection', (ws) => {
   });
 });
 
-app.get('/client/:id', (req, res) => {
-  res.sendFile(path.resolve(__dirname, `./public/client-${req.params.id}.html`));
-});
-
-app.get('/external-api', (req, res) => {
+app.get('/api', (req, res) => {
   let reqUsername = req.query.username;
 
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
-      // console.log('client ->', JSON.stringify(client.clientData))
       client.send('example@example.com');
       if (client.clientData.username === reqUsername) {
         client.send(JSON.stringify(req.query));
@@ -40,26 +39,3 @@ app.get('/external-api', (req, res) => {
 });
 
 server.listen(port, () => console.log(`http server is listening on http://localhost:${port}`));
-
-// const express = require('express')
-// const app = express()
-// const port = 3000
-// const WebSocket = require('ws')
-
-// const wss = new WebSocket.Server({ server: app })
-// console.log(wss)
-// wss.on('connection', function connection(ws) {
-//     ws.on('message', function message(data) {
-//       console.log('received: %s', data);
-//     });
-  
-//     ws.send('something');
-//   });
-
-// app.get('/', (req, res) => {
-//   res.send('Hello World2!')
-// })
-
-// app.listen(port, () => {
-//   console.log(`Example app listening on port ${port}`)
-// })
